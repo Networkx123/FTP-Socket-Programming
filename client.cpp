@@ -10,21 +10,17 @@
 #include <cstdlib>
 #include <unistd.h>
 #include <time.h>
-//#include "Python.h"
-//#include "numpy/arrayobject.h"
-//#include <Python.h>
-//#include <conio.h>
 using namespace std;
 
 int create_socket(int,char *);
 
 #ifdef WINDOWS
-    #include <direct.h>
-    #define GetCurrentDir _getcwd
+ #include <direct.h>
+ #define GetCurrentDir _getcwd
 #else
-    #include <unistd.h>
-    #define GetCurrentDir getcwd
- #endif
+ #include <unistd.h>
+ #define GetCurrentDir getcwd
+#endif
 
 #define MAXLINE 4096 /*max text line length*/
 
@@ -64,65 +60,58 @@ main(int argc, char **argv)
  cout<<"ftp>";
 
  while (fgets(sendline, MAXLINE, stdin) != NULL) {
-
   send(sockfd, sendline, MAXLINE, 0);
   char *token,*dummy;
   dummy=sendline;
   token=strtok(dummy," ");
-   
   if (strcmp("quit\n",sendline)==0)  {
-   //close(sockfd);
-  return 0;
-  }
-
+   	return 0;
+   }
   else if (strcmp("get",token)==0)  {
-  char port[MAXLINE], buffer[MAXLINE],char_num_blks[MAXLINE],char_num_last_blk[MAXLINE],message[MAXLINE];
-  int data_port,datasock,lSize,num_blks,num_last_blk,i;
-	
-  FILE *fp;
-  recv(sockfd, port, MAXLINE,0);
-  data_port=atoi(port);
-  datasock=create_socket(data_port,argv[1]);
-  token=strtok(NULL," \n");
-  recv(sockfd,message,MAXLINE,0);
-  int j;
-  for(j=0;j<365;)
-  {
-  if(strcmp("1",message)==0){
-   if((fp=fopen(token,"w"))==NULL)
-    cout<<"Error in creating file\n";
-  else
-  {
-  recv(sockfd, char_num_blks, MAXLINE,0);
-  num_blks=atoi(char_num_blks);
-  for(i= 0; i < num_blks; i++) { 
-  recv(datasock, buffer, MAXLINE,0);
-  fwrite(buffer,sizeof(char),MAXLINE,fp);
-  fflush(fp);
+   char port[MAXLINE], buffer[MAXLINE],char_num_blks[MAXLINE],char_num_last_blk[MAXLINE],message[MAXLINE];
+	 int data_port,datasock,lSize,num_blks,num_last_blk,i;
+	 FILE *fp;
+	 recv(sockfd, port, MAXLINE,0);
+	 data_port=atoi(port);
+	 datasock=create_socket(data_port,argv[1]);
+	 token=strtok(NULL," \n");
+	 recv(sockfd,message,MAXLINE,0);
+	 int j;
+	 for(j=0;j<365;)	{
+	  if(strcmp("1",message)==0){
+		 if((fp=fopen(token,"w"))==NULL)
+		  cout<<"Error in creating file\n";
+		 else{
+		  recv(sockfd, char_num_blks, MAXLINE,0);
+			num_blks=atoi(char_num_blks);
+			for(i= 0; i < num_blks; i++) { 
+			 recv(datasock, buffer, MAXLINE,0);
+			 fwrite(buffer,sizeof(char),MAXLINE,fp);
+			 fflush(fp);
+			 }
+			recv(sockfd, char_num_last_blk, MAXLINE,0);
+			num_last_blk=atoi(char_num_last_blk);
+			if (num_last_blk > 0) { 
+			 recv(datasock, buffer, MAXLINE,0);
+			 fwrite(buffer,sizeof(char),num_last_blk,fp);
+			 fflush(fp);
+			 }
+			fclose(fp);
+			cout<<"File download done.\n";
+		  }
+		}
+   else{
+	 cerr<<"Error in opening file. Check filename\nUsage: put filename"<<endl;
+ 	}
+	j++;
+ sleep(60);
+ }
+ }
+ else{
+  cerr<<"Error in command. Check Command"<<endl;
   }
-  recv(sockfd, char_num_last_blk, MAXLINE,0);
-  num_last_blk=atoi(char_num_last_blk);
-  if (num_last_blk > 0) { 
-  recv(datasock, buffer, MAXLINE,0);
-  fwrite(buffer,sizeof(char),num_last_blk,fp);
-  fflush(fp);
-  }
-  fclose(fp);
-  }
-  }
-  else{
-   cerr<<"Error in opening file. Check filename\nUsage: put filename"<<endl;
-  }
-  j++;
-  sleep(20);
-}
-}
-else{
-cerr<<"Error in command. Check Command"<<endl;
-}
-cout<<"ftp>";
-}
-
+  cout<<"ftp>";
+ }
  exit(0);
 }
 
@@ -131,10 +120,6 @@ int create_socket(int port,char *addr)
 {
  int sockfd;
  struct sockaddr_in servaddr;
-
-
- //Create a socket for the client
- //If sockfd<0 there was an error in the creation of the socket
  if ((sockfd = socket (AF_INET, SOCK_STREAM, 0)) <0) {
   cerr<<"Problem in creating the socket"<<endl;
   exit(2);
