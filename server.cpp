@@ -13,11 +13,11 @@ int create_socket(int);
 int accept_conn(int);
 
 #ifdef WINDOWS
-    #include <direct.h>
-    #define GetCurrentDir _getcwd
+ #include <direct.h>
+ #define GetCurrentDir _getcwd
 #else
-    #include <unistd.h>
-    #define GetCurrentDir getcwd
+ #include <unistd.h>
+ #define GetCurrentDir getcwd
  #endif
 
 #define MAXLINE 4096 /*max text line length*/
@@ -31,26 +31,19 @@ int main (int argc, char **argv)
  char buf[MAXLINE];
  struct sockaddr_in cliaddr, servaddr;
 
- if (argc !=2) {						//validating the input
+ if (argc !=2) {                        //validating the input
   cerr<<"Usage: <port number>"<<endl;
   exit(1);
  }
- 
-
- //Create a socket for the soclet
- //If sockfd<0 there was an error in the creation of the socket
  if ((listenfd = socket (AF_INET, SOCK_STREAM, 0)) <0) {
   cerr<<"Problem in creating the socket"<<endl;
   exit(2);
  }
-
-
- //preparation of the socket address
  servaddr.sin_family = AF_INET;
  servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
  if(atoi(argv[1])<=1024){
-	cerr<<"Port number must be greater than 1024"<<endl;
-	exit(2);
+  cerr<<"Port number must be greater than 1024"<<endl;
+  exit(2);
  }
  servaddr.sin_port = htons(atoi(argv[1]));
 
@@ -76,77 +69,72 @@ int main (int argc, char **argv)
 
   //close listening socket
   close (listenfd);
-  int data_port=1024;						//for data connection
+  int data_port=1024;                       //for data connection
   while ( (n = recv(connfd, buf, MAXLINE,0)) > 0)  {
-   cout<<"String received from client: "<<buf;
-   char *token,*dummy;
-   dummy=buf;
-   token=strtok(dummy," ");
+  cout<<"String received from client: "<<buf;
+  char *token,*dummy;
+  dummy=buf;
+  token=strtok(dummy," ");
 
-   if (strcmp("quit\n",buf)==0)  {
-   	cout<<"The client has quit\n";
-   }
-
-  
-    if (strcmp("get",token)==0)  {
-	char port[MAXLINE],buffer[MAXLINE],char_num_blks[MAXLINE],char_num_last_blk[MAXLINE];
-	int datasock,lSize,num_blks,num_last_blk,i;
-	FILE *fp;
-	token=strtok(NULL," \n");
-	cout<<"Filename given is: "<<token<<endl;
-	data_port=data_port+1;
-	if(data_port==atoi(argv[1])){
-		data_port=data_port+1;
-	}
-	sprintf(port,"%d",data_port);
-	datasock=create_socket(data_port);				//creating socket for data connection
-	send(connfd, port,MAXLINE,0);					//sending port no. to client
-	datasock=accept_conn(datasock);	
-	int j;
-	
-	for(j=0;j<365;j++)
-	{	
-		//accepting connnection by client
-		if ((fp=fopen(token,"r"))!=NULL)
-
-		{
-		//size of file
-			send(connfd,"1",MAXLINE,0);
-			fseek (fp , 0 , SEEK_END);
-			lSize = ftell (fp);
-			rewind (fp);
-			num_blks = lSize/MAXLINE;
-			num_last_blk = lSize%MAXLINE; 
-			sprintf(char_num_blks,"%d",num_blks);
-			send(connfd, char_num_blks, MAXLINE, 0);
-			//cout<<num_blks<<"	"<<num_last_blk<<endl;
-
-			for(i= 0; i < num_blks; i++) { 
-				fread (buffer,sizeof(char),MAXLINE,fp);
-				send(datasock, buffer, MAXLINE, 0);
-			//cout<<buffer<<"	"<<i<<endl;
-			}
-			sprintf(char_num_last_blk,"%d",num_last_blk);
-			send(connfd, char_num_last_blk, MAXLINE, 0);
-			if (num_last_blk > 0) { 
-				fread (buffer,sizeof(char),num_last_blk,fp);
-				send(datasock, buffer, MAXLINE, 0);
-				//cout<<buffer<<endl;
-			}
-			fclose(fp);
-			cout<<"File upload done.\n";
-			j++;
-			sleep(10000);
-		}	
-	
-		else{
-			send(connfd,"0",MAXLINE,0);
-			}
-   		}
-   	}
-
+  if (strcmp("quit\n",buf)==0)  {
+  cout<<"The client has quit\n";
   }
 
+  
+  if (strcmp("get",token)==0)  {
+  char port[MAXLINE],buffer[MAXLINE],char_num_blks[MAXLINE],char_num_last_blk[MAXLINE];
+  int datasock,lSize,num_blks,num_last_blk,i;
+  FILE *fp;
+  token=strtok(NULL," \n");
+  cout<<"Filename given is: "<<token<<endl;
+  data_port=data_port+1;
+  if(data_port==atoi(argv[1])){
+  data_port=data_port+1;
+  }
+  sprintf(port,"%d",data_port);
+  datasock=create_socket(data_port);              //creating socket for data connection
+  send(connfd, port,MAXLINE,0);                   //sending port no. to client
+  datasock=accept_conn(datasock); 
+  int j;
+  for(j=0;j<365;)
+  {
+  //accepting connnection by client
+  if ((fp=fopen(token,"r"))!=NULL)
+  {
+  //size of file
+  send(connfd,"1",MAXLINE,0);
+  fseek (fp , 0 , SEEK_END);
+  lSize = ftell (fp);
+  rewind (fp);
+  num_blks = lSize/MAXLINE;
+  num_last_blk = lSize%MAXLINE; 
+  sprintf(char_num_blks,"%d",num_blks);
+  send(connfd, char_num_blks, MAXLINE, 0);
+  //cout<<num_blks<<" "<<num_last_blk<<endl;
+
+  for(i= 0; i < num_blks; i++) { 
+  fread (buffer,sizeof(char),MAXLINE,fp);
+  send(datasock, buffer, MAXLINE, 0);
+  //cout<<buffer<<"   "<<i<<endl;
+  }
+  sprintf(char_num_last_blk,"%d",num_last_blk);
+  send(connfd, char_num_last_blk, MAXLINE, 0);
+  if (num_last_blk > 0) { 
+   fread (buffer,sizeof(char),num_last_blk,fp);
+   send(datasock, buffer, MAXLINE, 0);
+   //cout<<buffer<<endl;
+  }
+  fclose(fp);
+  cout<<"File upload done.\n";
+  }
+  else{
+  send(connfd,"0",MAXLINE,0);
+  }
+  j++;
+  sleep(20);
+  }
+  }
+  }
   if (n < 0)
    cout<<"Read error"<<endl;
 
