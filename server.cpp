@@ -7,6 +7,8 @@
 #include <string.h>
 #include <fstream>
 #include <unistd.h>
+#include <thread>
+
 using namespace std;
 
 int create_socket(int);
@@ -23,6 +25,122 @@ int accept_conn(int);
 #define MAXLINE 4096 /*max text line length*/
 #define LISTENQ 8 /*maximum number of client connections*/
 
+size_t filesize(FILE *fd) {
+  fseek (fd , 0 , SEEK_END);
+  size_t lSize = ftell (fd);
+  rewind (fd);
+  return lSize;
+}
+
+void sendfile(int clientfd, char const *filename) {
+  // transmission buffer
+  char buffer[MAXLINE];
+  memset(buffer,0,MAXLINE);
+
+  // try to open the file
+  FILE *file = fopen(filename,"r"); 
+
+  // file doesn't exist
+  if(file==nullptr) {
+    snprintf(buffer, 8, "%08lu", 0ul);
+    return;
+  }
+
+
+  // get length of file and send to client in ASCII
+  // send exactly 8 characters
+  size_t filelen = filesize(file);
+  snprintf(buffer, 8, "%08lu", (unsigned long)filelen);
+  send(clientfd, buffer, 8, 0);
+
+  // now send the file
+  size_t nread = fread(buffer,1,MAXLINE, file);
+  while(nread == MAXLINE) {
+    send(clientfd, buffer, MAXLINE,0);
+    nread = fread(buffer,1,MAXLINE, file);
+  }
+  send(clientfd, buffer, MAXLINE,0);
+  fclose(file);
+}
+
+void session(int clientfd) {
+  char buffer[MAXLINE];
+  
+  while (true) {
+    // get command from client
+    memset(buffer, 0, MAXLINE); 
+    int nmsg = recv(clientfd, buffer, MAXLINE, 0);
+    if(nmsg == 0) break; // client closed connection
+
+    // parse command
+    if(strncmp(buffer, "quit",4)==0) break; // client request termination
+    if(strncmp(buffer, "get ",4)!=0) break; // client sent bad message
+    sendfile(clientfd, buffer+4);
+  }
+  // close connection
+  close(clientfd);
+}
+
+void server(int portno) {
+  // create listening socket
+  int listenfd = socket (AF_INET, SOCK_STREAM, 0);
+  if (listenfd <= 0) {
+    cerr<<"Problem in creating the socket"<<endl;
+    exit(2);
+  }
+
+ //preparation of the socket address
+ struct sockaddr_in listener;
+ listener.sin_family = AF_INET;
+ listener.sin_addr.s_addr = htonl(INADDR_ANY);
+ listener.sin_port = htons(portno);
+
+ //bind the address to the socket 
+ int bindres = ::bind (listenfd, (struct sockaddr *) &listener, sizeof(listener));
+ if(bindres != 0) {
+   cerr << "Error binding address to socket, port " << portno<< " may be in use" << endl;
+   exit(2);
+ }
+ 
+ // listenm for connections
+ int listenres = listen(listenfd, LISTENQ);
+ if(listenres != 0) {
+   cerr << "Error listening on port " << portno << endl;
+   exit(2);
+ }
+ 
+
+ // receive buffer for client address, ignored
+ struct sockaddr_in clientaddr;
+ socklen_t clientaddr_length = sizeof(sockaddr_in);
+
+ while(true) { // forever
+   // accept a connection
+   int clientfd = accept(listenfd, (struct sockaddr*)&clientaddr, &clientaddr_length);
+
+   // spawn a thread to handle the connection
+   ::std::thread(session,clientfd).detach();
+ } 
+
+}
+
+int main(int argc, char **argv) {
+
+  if (argc !=2) {						//validating the input
+    cerr<<"Usage: <port number>"<<endl;
+    exit(1);
+  }
+  int portno = atoi(argv[1]);
+  if(portno < 1024) {
+	  cerr<<"Port number must be greater than 1024"<<endl;
+	  exit(2);
+  }
+  server(portno);
+  return 0;
+}
+
+/*
+
 int main (int argc, char **argv)
 {
  int listenfd, connfd, n;
@@ -35,7 +153,6 @@ int main (int argc, char **argv)
   cerr<<"Usage: <port number>"<<endl;
   exit(1);
  }
- 
 
  //Create a socket for the soclet
  //If sockfd<0 there was an error in the creation of the socket
@@ -192,3 +309,4 @@ exit(2);
 
 return(dataconnfd);
 }
+*/
