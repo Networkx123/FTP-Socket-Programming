@@ -46,24 +46,25 @@ void sendfile(int clientfd, char const *filename) {
     return;
   }
 
-
   // get length of file and send to client in ASCII
   // send exactly 8 characters
   size_t filelen = filesize(file);
-  snprintf(buffer, 8, "%08lu", (unsigned long)filelen);
+  snprintf(buffer, 9, "%08lu", (unsigned long)filelen); // count includes trailing nul
+  cout << "Sending file " << filename << " of " << filelen << "=" << buffer << "  bytes" << endl;
   send(clientfd, buffer, 8, 0);
 
   // now send the file
-  size_t nread = fread(buffer,1,MAXLINE, file);
+  size_t nread = fread(buffer, 1, MAXLINE, file);
   while(nread == MAXLINE) {
-    send(clientfd, buffer, MAXLINE,0);
+    send(clientfd, buffer, MAXLINE, 0);
     nread = fread(buffer,1,MAXLINE, file);
   }
-  send(clientfd, buffer, MAXLINE,0);
+  send(clientfd, buffer, nread, 0);
   fclose(file);
 }
 
 void session(int clientfd) {
+  cout << "Session started" << endl;
   char buffer[MAXLINE];
   
   while (true) {
